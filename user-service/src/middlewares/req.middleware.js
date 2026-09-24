@@ -1,4 +1,4 @@
-
+const logger = require('../config/logger');
 
 const reqLogger = (req, res, next) => {
     logger.debug(`Incoming request: ${req.method} ${req.url}`);
