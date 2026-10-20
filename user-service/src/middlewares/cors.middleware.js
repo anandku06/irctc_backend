@@ -1,7 +1,7 @@
 const cors = require('cors');
 const { config } = require('../config');
 
-const allowedOrigins = config.CORS_ALLOWED_ORIGINS.split(',').map(origin => origin.trim());
+const allowedOrigins = config.ALLOWED_ORIGINS.split(',').map(origin => origin.trim());
 
 const corsMiddleware = cors({
     origin: function (origin, callback) {
