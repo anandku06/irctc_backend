@@ -19,4 +19,4 @@ if (!globalForPrisma.prisma) {
 
 const prisma = globalForPrisma.prisma;
 
-module.exports = prisma;
+// module.exports = prisma;
