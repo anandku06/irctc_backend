@@ -6,6 +6,7 @@ const corsMiddleware = require('./middlewares/cors.middleware');
 const logger = require('./config/logger');
 const { config } = require('./config');
 const reqLogger = require('./middlewares/req.middleware');
+const authRoutes = require('./routes/auth.route');
 
 
 const app = express();
@@ -19,6 +20,8 @@ app.use(express.json());
 app.get('/', (req, res) => {
     res.send('User Service is running');
 });
+
+app.use('/api/v1/auth', authRoutes)
 
 app.get('/health', (req, res) => {
     res.status(200).send('OK');
