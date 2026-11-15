@@ -1,9 +1,13 @@
-const { BadRequestError } = require('../utils/error');
+const { BadRequestError, UnauthorizedError } = require('../utils/error');
 const asyncHandler = require('../utils/asyncHandler');
 const { config } = require('../config');
 const authService = require('../services/auth.service');
+const { getDeviceFingerprint } = require('../utils/deviceFingerprint');
 
 const isProd = process.env.NODE_ENV === 'production';
+
+const ACCESS_TOKEN_EXPIRY_SECONDS = config.ACCESS_TOKEN_EXPIRY_SECONDS;
+const REFRESH_TOKEN_EXPIRY_SECONDS = config.REFRESH_TOKEN_EXPIRY_SECONDS;
 
 const cookieOptions = (maxAge) => ({
     httpOnly: true,
@@ -48,4 +52,42 @@ exports.verifyOTP = asyncHandler(async (req, res) => {
         message: 'OTP verified successfully!',
         user,
     });
+})
+
+exports.login = asyncHandler(async (req, res) => {
+    const { email, password } = req.body;
+    if (!email || !password) {
+        throw new BadRequestError('Email and Password are required');
+    }
+
+    const devId = getDeviceFingerprint(req);
+
+    const { access_token, refresh_token, logged_in_user } = await authService.login(email, password, devId);
+
+    res.cookie("access_token", access_token, cookieOptions(ACCESS_TOKEN_EXPIRY_SECONDS * 1000));
+
+    res.cookie("refresh_token", refresh_token, cookieOptions(REFRESH_TOKEN_EXPIRY_SECONDS * 1000))
+        .status(200).json({
+            success: true,
+            message: 'Login successful!',
+            user: logged_in_user,
+        })
+})
+
+exports.rotateRefreshToken = asyncHandler(async (req, res) => {
+    const refreshToken = req.cookies.refresh_token;
+    if (!refreshToken) {
+        throw new UnauthorizedError('Refresh token is required!', "REFRESH_TOKEN_MISSING");
+    }
+
+    const devId = getDeviceFingerprint(req);
+
+    const { newAccessToken, newRefreshToken } = await authService.rotateRefreshToken(refreshToken, devId);
+
+    res.cookie("access_token", newAccessToken, cookieOptions(ACCESS_TOKEN_EXPIRY_SECONDS * 1000));
+    res.cookie("refresh_token", newRefreshToken, cookieOptions(REFRESH_TOKEN_EXPIRY_SECONDS * 1000))
+        .status(200).json({
+            success: true,
+            message: 'Refresh token rotated successfully!',
+        })
 })
