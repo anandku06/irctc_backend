@@ -24,6 +24,9 @@ const config = {
     REFRESH_TOKEN_EXPIRY_SECONDS: Number(process.env.JWT_REFRESH_EXPIRY_SECONDS || 604800), // 7 days
 
     REDIS_USER_TTL: Number(process.env.REDIS_USER_TTL || 86400), // 1 day in seconds
+
+    GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
+    GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
 }
 
 module.exports = { config };

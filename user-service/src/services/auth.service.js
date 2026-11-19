@@ -1,10 +1,14 @@
-const { ConflictError, BadRequestError, ForbiddenError } = require('../utils/error');
+const { ConflictError, BadRequestError, ForbiddenError, UnauthorizedError } = require('../utils/error');
 const bcrypt = require('bcrypt');
 const { generateAndStoreOTP, checkOTP } = require('../utils/otp');
 const prisma = require('../config/prisma');
 const { generateAccessToken, generateRefreshToken, verifyRefreshToken } = require('../utils/auth');
 const { redis } = require('../config/redis');
 const { config } = require('../config');
+const { OAuth2Client } = require("google-auth-library");
+
+const client = new OAuth2Client(config.GOOGLE_CLIENT_ID)
+
 
 const sendOTP = async (firstName, lastName, email, password) => {
     const existingUser = await prisma.user.findUnique({
@@ -107,9 +111,104 @@ const rotateRefreshToken = async (refreshToken, deviceId) => {
     };
 }
 
+const verifyGoogleIdToken = async (idToken, devId) => {
+    const ticket = await client.verifyIdToken({
+        idToken,
+        audience: config.GOOGLE_CLIENT_ID,
+    })
+
+    const payload = ticket.getPayload();
+    if (!payload.sub || !payload.email) {
+        throw new UnauthorizedError('Invalid Google ID Token', 'GOOGLE_ID_TOKEN_INVALID');
+    }
+
+    const googleUser = {
+        provider: payload.iss,
+        providerId: payload.sub,
+        email: payload.email,
+        firstName: payload.given_name || '',
+        lastName: payload.family_name || '',
+        emailVerified: payload.email_verified || false,
+    };
+
+    const user = await prisma.$transaction(async (tx) => {
+        // Check if the user already exists with this Google provider ID
+        let existingProvider = await tx.authProvider.findUnique({
+            where: {
+                provider_providerId: {
+                    provider: googleUser.provider,
+                    providerId: googleUser.providerId,
+                }
+            },
+            include: {
+                user: true,
+            }
+        })
+
+        // If the user exists, return the associated user
+        if (existingProvider) {
+            return existingProvider.user;
+        }
+
+        // If the user doesn't exist, check if a user with the same email exists
+        let existingUser = await tx.user.findUnique({
+            where: {
+                email: googleUser.email,
+            }
+        })
+
+        // If a user with the same email exists, link the Google provider to this user
+        if (existingUser) {
+            await tx.authProvider.create({
+                data: {
+                    provider: googleUser.provider,
+                    providerId: googleUser.providerId,
+                    userId: existingUser.id,
+                }
+            })
+
+            return existingUser; // Return the existing user after linking the provider
+        }
+
+        // If no user exists, create a new user and link the Google provider
+        return await tx.user.create({
+            data: {
+                firstName: googleUser.firstName,
+                lastName: googleUser.lastName,
+                email: googleUser.email,
+                emailVerified: googleUser.emailVerified,
+                // nested write to create the authProvider record in the same transaction
+                AuthProviders: {
+                    create: {
+                        provider: googleUser.provider,
+                        providerId: googleUser.providerId,
+                    }
+                }
+            }
+        })
+    })
+
+    const accessToken = generateAccessToken(user.id);
+    const refreshToken = generateRefreshToken(user.id);
+
+    const { jti } = jwt.decode(refreshToken);
+    await redis.set(`refresh:${user.id}:${devId}`, jti, 'EX', config.REFRESH_TOKEN_EXPIRY_SECONDS);
+
+
+    const { password: _password, ...userWithoutPassword } = user;
+    await redis.set(`user:${user.id}`, JSON.stringify(userWithoutPassword), 'EX', config.REDIS_USER_TTL);
+
+    return {
+        access_token: accessToken,
+        refresh_token: refreshToken,
+        logged_in_user: userWithoutPassword,
+    }
+}
+
 module.exports = {
     sendOTP,
     verifyOTP,
     login,
     rotateRefreshToken,
+    verifyGoogleIdToken,
 };
