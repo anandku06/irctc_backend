@@ -27,6 +27,11 @@ const config = {
 
     GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
     GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
+
+    SENDGRID_API_KEY: process.env.SENDGRID_API_KEY,
+
+    KAFKA_CLIENT_ID: process.env.KAFKA_CLIENT_ID,
+    KAFKA_BROKER: process.env.KAFKA_BROKER,
 }
 
 module.exports = { config };
