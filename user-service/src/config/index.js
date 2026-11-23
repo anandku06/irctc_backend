@@ -1,7 +1,7 @@
 require('dotenv').config();
 
 const config = {
-    SERVICE_NAME: process.env.SERVICE_NAME || 'user-service',
+    SERVICE_NAME: require('../../package.json').name,
     PORT: Number(process.env.PORT),
     NODE_ENV: process.env.NODE_ENV,
     LOG_LEVEL: process.env.LOG_LEVEL,
@@ -29,9 +29,22 @@ const config = {
     GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
 
     SENDGRID_API_KEY: process.env.SENDGRID_API_KEY,
+    MAIL_SEND: process.env.MAIL_SEND,
 
     KAFKA_CLIENT_ID: process.env.KAFKA_CLIENT_ID,
     KAFKA_BROKER: process.env.KAFKA_BROKER,
+}
+
+if (!config.GOOGLE_CLIENT_ID) {
+    throw new Error("GOOGLE_CLIENT_ID is not defined in the environment variables");
+}
+
+if (!config.SENDGRID_API_KEY) {
+    throw new Error("SENDGRID_API_KEY is not defined in the environment variables");
+}
+
+if (!config.MAIL_SEND) {
+    throw new Error("MAIL_SEND is not defined in the environment variables");
 }
 
 module.exports = { config };
