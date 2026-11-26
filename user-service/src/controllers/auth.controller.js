@@ -1,6 +1,6 @@
 const { BadRequestError, UnauthorizedError } = require('../utils/error');
 const asyncHandler = require('../utils/asyncHandler');
-const { config } = require('../config');
+const { config } = require('../config/index');
 const authService = require('../services/auth.service');
 const { getDeviceFingerprint } = require('../utils/deviceFingerprint');
 

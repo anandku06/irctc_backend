@@ -1,5 +1,6 @@
 const { AppError } = require('../utils/error');
 const logger = require('../config/logger');
+const { config } = require('../config');
 
 module.exports = (err, req, res, next) => {
     if (err instanceof AppError) {

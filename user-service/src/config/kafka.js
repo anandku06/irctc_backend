@@ -1,5 +1,6 @@
 const { Kafka, logLevel } = require("kafkajs");
 const logger = require("./logger");
+const { config } = require(".");
 
 
 const kafka = new Kafka({

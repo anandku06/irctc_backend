@@ -1,5 +1,5 @@
 const { config } = require("../config");
-const redis = require("../config/redis");
+const { redis } = require("../config/redis");
 const { TooManyRequestsError } = require("./error");
 const otpGenerator = require("otp-generator");
 const crypto = require("crypto");

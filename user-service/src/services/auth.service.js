@@ -4,8 +4,11 @@ const { generateAndStoreOTP, checkOTP } = require('../utils/otp');
 const prisma = require('../config/prisma');
 const { generateAccessToken, generateRefreshToken, verifyRefreshToken } = require('../utils/auth');
 const { redis } = require('../config/redis');
+const jwt = require('jsonwebtoken');
 const { config } = require('../config');
 const { OAuth2Client } = require("google-auth-library");
+const notificationProducer = require('../kafka/producer/notification.producer');
+const logger = require('../config/logger');
 
 const client = new OAuth2Client(config.GOOGLE_CLIENT_ID)
 
@@ -29,7 +32,9 @@ const sendOTP = async (firstName, lastName, email, password) => {
 
     const { otp, otpSessionId } = await generateAndStoreOTP(meta);
 
-    await sendOTPEmail(email, otp);
+    await notificationProducer.sendOtpEmail(email, otp, (config.OTP_TTL / 60)); // Convert TTL from seconds to minutes for the email content
+
+    logger.info(`OTP sent to ${email}: ${otp} (valid for ${config.OTP_TTL / 60} minutes)`);
 
     return { otpSessionId };
 }
@@ -50,7 +55,8 @@ const verifyOTP = async (otpSessionId, otp) => {
         }
     })
 
-    // TODO: Send a welcome email or any other post-verification actions here, using Kafka
+    await notificationProducer.sendWelcomeEmail(meta.email, meta.firstName);
+    logger.info(`Welcome email sent to ${meta.email}`);
 
     return user;
 }
